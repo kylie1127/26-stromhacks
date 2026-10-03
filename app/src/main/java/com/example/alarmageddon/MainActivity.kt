@@ -2,7 +2,6 @@
 package com.example.alarmageddon
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -15,10 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -30,15 +27,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// MARK: - Colors
 
 private val Lavender = Color(0xFFB9AEFF)
 private val LightLavender = Color(0xFFF0EEFF)
@@ -47,27 +46,49 @@ private val SoftYellow = Color(0xFFFFC76A)
 private val BackgroundColor = Color(0xFFF9F8FF)
 private val TextGray = Color(0xFF858397)
 
-// MARK: - Main Activity
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             MaterialTheme {
-                AlarmageddonHome()
+
+                val alarms = remember {
+                    mutableStateListOf<Alarm>()
+                }
+
+                var showCreateScreen by remember {
+                    mutableStateOf(false)
+                }
+
+                if (showCreateScreen) {
+                    CreateAlarmScreen(
+                        onBack = {
+                            showCreateScreen = false
+                        },
+                        onCreate = { newAlarm ->
+                            alarms.add(newAlarm)
+                            showCreateScreen = false
+                        }
+                    )
+                } else {
+                    AlarmageddonHome(
+                        alarms = alarms,
+                        onAddAlarm = {
+                            showCreateScreen = true
+                        }
+                    )
+                }
             }
         }
     }
 }
 
-// MARK: - Home Screen
-
 @Composable
-fun AlarmageddonHome() {
-
-    val context = LocalContext.current
-
+fun AlarmageddonHome(
+    alarms: List<Alarm>,
+    onAddAlarm: () -> Unit
+) {
     Scaffold(
         containerColor = BackgroundColor,
         bottomBar = {
@@ -83,8 +104,6 @@ fun AlarmageddonHome() {
                 .padding(horizontal = 22.dp)
                 .padding(top = 28.dp, bottom = 24.dp)
         ) {
-
-            // Header
 
             Text(
                 text = "Good morning, Kylie ☀️",
@@ -103,8 +122,6 @@ fun AlarmageddonHome() {
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Next Wake-Up
-
             SectionTitle("NEXT WAKE-UP")
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -121,7 +138,6 @@ fun AlarmageddonHome() {
                         .fillMaxWidth()
                         .padding(22.dp)
                 ) {
-
                     Text(
                         text = "🌙  Tomorrow morning",
                         fontSize = 14.sp,
@@ -131,7 +147,7 @@ fun AlarmageddonHome() {
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "7:00 AM",
+                        text = alarms.firstOrNull()?.time ?: "7:00 AM",
                         fontSize = 40.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkPurple
@@ -157,7 +173,7 @@ fun AlarmageddonHome() {
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = "3 friends in this pact",
+                            text = "${alarms.firstOrNull()?.crewCount ?: 3} people in this pact",
                             fontSize = 12.sp,
                             color = DarkPurple
                         )
@@ -167,8 +183,6 @@ fun AlarmageddonHome() {
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // My Pact
-
             SectionTitle("MY PACT")
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -177,7 +191,6 @@ fun AlarmageddonHome() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 StatCard(
                     title = "🔥 Best Streak",
                     value = "12 days",
@@ -195,14 +208,11 @@ fun AlarmageddonHome() {
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Crew
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 SectionTitle("YOUR CREW")
 
                 Text(
@@ -217,8 +227,7 @@ fun AlarmageddonHome() {
             CrewCard(
                 emoji = "👩🏻",
                 name = "Sarah Johnson",
-                status = "Ready for tomorrow!",
-                isOnline = true
+                status = "Ready for tomorrow!"
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -226,13 +235,10 @@ fun AlarmageddonHome() {
             CrewCard(
                 emoji = "👨🏻",
                 name = "Alex Chen",
-                status = "Last check-in: 7:00 AM",
-                isOnline = true
+                status = "Last check-in: 7:00 AM"
             )
 
             Spacer(modifier = Modifier.height(28.dp))
-
-            // My Alarms
 
             SectionTitle("MY ALARMS")
 
@@ -241,7 +247,8 @@ fun AlarmageddonHome() {
             AlarmCard(
                 time = "7:00 AM",
                 title = "Morning Workout",
-                days = "Mon · Tue · Wed · Thu · Fri"
+                days = "Mon · Tue · Wed · Thu · Fri",
+                stake = "Buy Coffee ☕"
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -249,21 +256,29 @@ fun AlarmageddonHome() {
             AlarmCard(
                 time = "8:30 AM",
                 title = "Weekend Study",
-                days = "Sat · Sun"
+                days = "Sat · Sun",
+                stake = "Buy Breakfast 🍳"
             )
+
+            alarms.forEach { alarm ->
+                Spacer(modifier = Modifier.height(10.dp))
+
+                AlarmCard(
+                    time = alarm.time,
+                    title = "My New Pact",
+                    days = if (alarm.repeatDays.isEmpty()) {
+                        "No repeat"
+                    } else {
+                        alarm.repeatDays.joinToString(" · ")
+                    },
+                    stake = "${alarm.stake} · ${alarm.crewCount} people"
+                )
+            }
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            // Add Alarm Button
-
             Button(
-                onClick = {
-                    Toast.makeText(
-                        context,
-                        "Create Alarm coming soon!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
+                onClick = onAddAlarm,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp),
@@ -282,8 +297,6 @@ fun AlarmageddonHome() {
     }
 }
 
-// MARK: - Section Title
-
 @Composable
 fun SectionTitle(title: String) {
     Text(
@@ -294,8 +307,6 @@ fun SectionTitle(title: String) {
         letterSpacing = 1.sp
     )
 }
-
-// MARK: - Stat Card
 
 @Composable
 fun StatCard(
@@ -314,7 +325,6 @@ fun StatCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-
             Text(
                 text = title,
                 fontSize = 12.sp,
@@ -333,14 +343,11 @@ fun StatCard(
     }
 }
 
-// MARK: - Crew Card
-
 @Composable
 fun CrewCard(
     emoji: String,
     name: String,
-    status: String,
-    isOnline: Boolean
+    status: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -355,7 +362,6 @@ fun CrewCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = emoji,
                 fontSize = 30.sp
@@ -383,21 +389,20 @@ fun CrewCard(
             }
 
             Text(
-                text = if (isOnline) "●" else "●",
-                color = if (isOnline) Color(0xFF69BE86) else TextGray,
+                text = "●",
+                color = Color(0xFF69BE86),
                 fontSize = 13.sp
             )
         }
     }
 }
 
-// MARK: - Alarm Card
-
 @Composable
 fun AlarmCard(
     time: String,
     title: String,
-    days: String
+    days: String,
+    stake: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -412,11 +417,9 @@ fun AlarmCard(
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
                 Text(
                     text = time,
                     fontSize = 23.sp,
@@ -440,6 +443,14 @@ fun AlarmCard(
                     fontSize = 11.sp,
                     color = TextGray
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = stake,
+                    fontSize = 11.sp,
+                    color = DarkPurple
+                )
             }
 
             Text(
@@ -450,11 +461,8 @@ fun AlarmCard(
     }
 }
 
-// MARK: - Bottom Navigation
-
 @Composable
 fun BottomNavigation() {
-
     Surface(
         color = Color.White,
         shadowElevation = 8.dp
@@ -467,7 +475,6 @@ fun BottomNavigation() {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             BottomNavItem("⌂", "Home", true)
             BottomNavItem("◷", "Pacts", false)
             BottomNavItem("♧", "Crew", false)
@@ -485,7 +492,6 @@ fun BottomNavItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         Text(
             text = icon,
             fontSize = 22.sp,
@@ -496,7 +502,11 @@ fun BottomNavItem(
             text = label,
             fontSize = 11.sp,
             color = if (selected) DarkPurple else TextGray,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (selected) {
+                FontWeight.Bold
+            } else {
+                FontWeight.Normal
+            }
         )
     }
 }
