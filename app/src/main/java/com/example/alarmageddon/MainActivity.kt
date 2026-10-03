@@ -4,34 +4,13 @@ package com.example.alarmageddon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,12 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Lavender = Color(0xFFB9AEFF)
-private val LightLavender = Color(0xFFF0EEFF)
-private val DarkPurple = Color(0xFF343052)
-private val SoftYellow = Color(0xFFFFC76A)
-private val BackgroundColor = Color(0xFFF9F8FF)
-private val TextGray = Color(0xFF858397)
+private val Purple = Color(0xFF343052)
+private val Lavender = Color(0xFFF0EEFF)
+private val Background = Color(0xFFF9F8FF)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,34 +28,51 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-
-                val alarms = remember {
-                    mutableStateListOf<Alarm>()
-                }
-
-                var showCreateScreen by remember {
-                    mutableStateOf(false)
-                }
-
-                if (showCreateScreen) {
-                    CreateAlarmScreen(
-                        onBack = {
-                            showCreateScreen = false
-                        },
-                        onCreate = { newAlarm ->
-                            alarms.add(newAlarm)
-                            showCreateScreen = false
-                        }
-                    )
-                } else {
-                    AlarmageddonHome(
-                        alarms = alarms,
-                        onAddAlarm = {
-                            showCreateScreen = true
-                        }
-                    )
-                }
+                AlarmageddonApp()
             }
+        }
+    }
+}
+
+@Composable
+fun AlarmageddonApp() {
+    val alarms = remember { mutableStateListOf<Alarm>() }
+
+    var showCreateScreen by remember { mutableStateOf(false) }
+    var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+
+    when {
+        selectedAlarm != null -> {
+            AlarmDetailScreen(
+                alarm = selectedAlarm!!,
+                onBack = {
+                    selectedAlarm = null
+                }
+            )
+        }
+
+        showCreateScreen -> {
+            CreateAlarmScreen(
+                onBack = {
+                    showCreateScreen = false
+                },
+                onCreate = { alarm ->
+                    alarms.add(alarm)
+                    showCreateScreen = false
+                }
+            )
+        }
+
+        else -> {
+            AlarmageddonHome(
+                alarms = alarms,
+                onAddAlarm = {
+                    showCreateScreen = true
+                },
+                onAlarmClick = { alarm ->
+                    selectedAlarm = alarm
+                }
+            )
         }
     }
 }
@@ -87,311 +80,265 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AlarmageddonHome(
     alarms: List<Alarm>,
-    onAddAlarm: () -> Unit
+    onAddAlarm: () -> Unit,
+    onAlarmClick: (Alarm) -> Unit
 ) {
-    Scaffold(
-        containerColor = BackgroundColor,
-        bottomBar = {
-            BottomNavigation()
-        }
-    ) { innerPadding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp)
-                .padding(top = 28.dp, bottom = 24.dp)
+        Text(
+            text = "ALARMAGEDDON ⚡",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Purple
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Good morning, Kylie!",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Purple
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Ready to keep your promises?",
+            fontSize = 15.sp,
+            color = Color.Gray
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Next Wake-Up card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Purple
+            )
         ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    text = "NEXT WAKE-UP",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = if (alarms.isNotEmpty()) alarms.last().time else "07:00 AM",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Your crew is counting on you!",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Stats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                title = "CURRENT STREAK",
+                value = "5 days",
+                modifier = Modifier.weight(1f)
+            )
+
+            StatCard(
+                title = "YOUR CREW",
+                value = "3 people",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "Your Crew 👥",
+            fontSize = 21.sp,
+            fontWeight = FontWeight.Bold,
+            color = Purple
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Lavender
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "🔥",
+                    fontSize = 28.sp
+                )
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column {
+                    Text(
+                        text = "Morning Warriors",
+                        fontWeight = FontWeight.Bold,
+                        color = Purple
+                    )
+                    Text(
+                        text = "Your crew is waiting for you",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(
-                text = "Good morning, Kylie ☀️",
-                fontSize = 25.sp,
+                text = "Your Alarms ⏰",
+                fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
-                color = DarkPurple
+                color = Purple
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Ready to conquer your morning?",
-                fontSize = 14.sp,
-                color = TextGray
+                text = "${alarms.size} alarms",
+                fontSize = 13.sp,
+                color = Color.Gray
             )
+        }
 
-            Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-            SectionTitle("NEXT WAKE-UP")
-
-            Spacer(modifier = Modifier.height(10.dp))
-
+        if (alarms.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = LightLavender
+                    containerColor = Color.White
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(22.dp)
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Text("No alarms yet!", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "🌙  Tomorrow morning",
-                        fontSize = 14.sp,
-                        color = DarkPurple
+                        "Create your first alarm pact.",
+                        color = Color.Gray,
+                        fontSize = 13.sp
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = alarms.firstOrNull()?.time ?: "7:00 AM",
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkPurple
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Your crew is counting on you!",
-                        fontSize = 13.sp,
-                        color = DarkPurple
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("👩🏻", fontSize = 22.sp)
-                        Text(" 👨🏻", fontSize = 22.sp)
-                        Text(" 👩🏽", fontSize = 22.sp)
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = "${alarms.firstOrNull()?.crewCount ?: 3} people in this pact",
-                            fontSize = 12.sp,
-                            color = DarkPurple
-                        )
-                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            SectionTitle("MY PACT")
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    title = "🔥 Best Streak",
-                    value = "12 days",
-                    background = SoftYellow,
-                    modifier = Modifier.weight(1f)
-                )
-
-                StatCard(
-                    title = "☀️ Average Wake-Up",
-                    value = "6:42 AM",
-                    background = Lavender,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SectionTitle("YOUR CREW")
-
-                Text(
-                    text = "See all →",
-                    fontSize = 13.sp,
-                    color = DarkPurple
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CrewCard(
-                emoji = "👩🏻",
-                name = "Sarah Johnson",
-                status = "Ready for tomorrow!"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CrewCard(
-                emoji = "👨🏻",
-                name = "Alex Chen",
-                status = "Last check-in: 7:00 AM"
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            SectionTitle("MY ALARMS")
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            AlarmCard(
-                time = "7:00 AM",
-                title = "Morning Workout",
-                days = "Mon · Tue · Wed · Thu · Fri",
-                stake = "Buy Coffee ☕"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            AlarmCard(
-                time = "8:30 AM",
-                title = "Weekend Study",
-                days = "Sat · Sun",
-                stake = "Buy Breakfast 🍳"
-            )
-
+        } else {
             alarms.forEach { alarm ->
-                Spacer(modifier = Modifier.height(10.dp))
-
                 AlarmCard(
                     time = alarm.time,
-                    title = "My New Pact",
+                    title = "Your Alarm",
                     days = if (alarm.repeatDays.isEmpty()) {
                         "No repeat"
                     } else {
                         alarm.repeatDays.joinToString(" · ")
                     },
-                    stake = "${alarm.stake} · ${alarm.crewCount} people"
+                    stake = alarm.stake,
+                    onClick = {
+                        onAlarmClick(alarm)
+                    }
                 )
-            }
 
-            Spacer(modifier = Modifier.height(22.dp))
-
-            Button(
-                onClick = onAddAlarm,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkPurple
-                )
-            ) {
-                Text(
-                    text = "+  Add New Alarm",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
-    }
-}
 
-@Composable
-fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = TextGray,
-        letterSpacing = 1.sp
-    )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = onAddAlarm,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(58.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Purple
+            )
+        ) {
+            Text(
+                text = "+  Add New Alarm",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
 }
 
 @Composable
 fun StatCard(
     title: String,
     value: String,
-    background: Color,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = background
+            containerColor = Lavender
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(18.dp)
         ) {
             Text(
                 text = title,
-                fontSize = 12.sp,
-                color = DarkPurple
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = value,
-                fontSize = 21.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
-                color = DarkPurple
-            )
-        }
-    }
-}
-
-@Composable
-fun CrewCard(
-    emoji: String,
-    name: String,
-    status: String
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = emoji,
-                fontSize = 30.sp
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkPurple
-                )
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Text(
-                    text = status,
-                    fontSize = 12.sp,
-                    color = TextGray
-                )
-            }
-
-            Text(
-                text = "●",
-                color = Color(0xFF69BE86),
-                fontSize = 13.sp
+                color = Purple
             )
         }
     }
@@ -402,111 +349,60 @@ fun AlarmCard(
     time: String,
     title: String,
     days: String,
-    stake: String
+    stake: String,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(20.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = time,
-                    fontSize = 23.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkPurple
-                )
+            Text(
+                text = time,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Purple
+            )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = DarkPurple
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = days,
-                    fontSize = 11.sp,
-                    color = TextGray
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = stake,
-                    fontSize = 11.sp,
-                    color = DarkPurple
-                )
-            }
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "🔔",
-                fontSize = 25.sp
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Purple
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = days,
+                fontSize = 13.sp,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "🔥 $stake",
+                fontSize = 14.sp,
+                color = Purple
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Tap to view details →",
+                fontSize = 12.sp,
+                color = Color.Gray
             )
         }
-    }
-}
-
-@Composable
-fun BottomNavigation() {
-    Surface(
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem("⌂", "Home", true)
-            BottomNavItem("◷", "Pacts", false)
-            BottomNavItem("♧", "Crew", false)
-            BottomNavItem("☺", "Profile", false)
-        }
-    }
-}
-
-@Composable
-fun BottomNavItem(
-    icon: String,
-    label: String,
-    selected: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = icon,
-            fontSize = 22.sp,
-            color = if (selected) DarkPurple else TextGray
-        )
-
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = if (selected) DarkPurple else TextGray,
-            fontWeight = if (selected) {
-                FontWeight.Bold
-            } else {
-                FontWeight.Normal
-            }
-        )
     }
 }
