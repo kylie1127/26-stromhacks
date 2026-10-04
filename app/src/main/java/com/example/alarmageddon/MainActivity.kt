@@ -22,7 +22,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 private val Purple = Color(0xFF343052)
 private val Lavender = Color(0xFFF0EEFF)
-private val Background = Color(0xFFF9F8FF)
+private val Background = Color(0xFFFAF9FF)
+private val Muted = Color(0xFF89869D)
+
+enum class MainTab {
+    HOME, CREW, ALARMS, PROFILE
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,63 +47,185 @@ fun AlarmageddonApp() {
         mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
     }
 
-    if (!signedIn) {
-        AuthScreen(onSuccess = { signedIn = true })
-        return
-    } else {
+    var selectedTab by remember { mutableStateOf(MainTab.HOME) }
+    var showCreateScreen by remember { mutableStateOf(false) }
+    var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+    var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
 
-        val alarms = remember { mutableStateListOf<Alarm>() }
+    when {
+        selectedAlarm != null -> {
+            AlarmDetailScreen(
+                alarm = selectedAlarm!!,
+                onBack = {
+                    selectedAlarm = null
+                },
+                onEdit = { alarm ->
+                    editingAlarm = alarm
+                    selectedAlarm = null
+                },
+                onDelete = { alarm ->
+                    alarms.removeAll { it.id == alarm.id }
+                    selectedAlarm = null
+                }
+            )
+        }
 
-        var showCreateScreen by remember { mutableStateOf(false) }
-        var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
-
-        when {
-            selectedAlarm != null -> {
-                AlarmDetailScreen(
-                    alarm = selectedAlarm!!,
-                    onBack = {
-                        selectedAlarm = null
+        editingAlarm != null -> {
+            CreateAlarmScreen(
+                initialAlarm = editingAlarm,
+                onBack = {
+                    editingAlarm = null
+                },
+                onCreate = { updatedAlarm ->
+                    val index = alarms.indexOfFirst {
+                        it.id == updatedAlarm.id
                     }
-                )
-            }
 
-            showCreateScreen -> {
-                CreateAlarmScreen(
-                    onBack = {
-                        showCreateScreen = false
-                    },
-                    onCreate = { alarm ->
-                        alarms.add(alarm)
-                        showCreateScreen = false
+                    if (index != -1) {
+                        alarms[index] = updatedAlarm
                     }
-                )
-            }
 
-            else -> {
-                AlarmageddonHome(
-                    alarms = alarms,
-                    onAddAlarm = {
-                        showCreateScreen = true
-                    },
-                    onAlarmClick = { alarm ->
-                        selectedAlarm = alarm
-                    },
-                    onSignOut = {
-                        FirebaseAuth.getInstance().signOut()
-                        signedIn = false
+                    editingAlarm = null
+                }
+            )
+        }
+
+        showCreateScreen -> {
+            CreateAlarmScreen(
+                onBack = {
+                    showCreateScreen = false
+                },
+                onCreate = { alarm ->
+                    alarms.add(alarm)
+                    showCreateScreen = false
+                    selectedTab = MainTab.ALARMS
+                }
+            )
+        }
+
+        else -> {
+            Scaffold(
+                containerColor = Background,
+                bottomBar = {
+                    AlarmBottomNavigation(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it }
+                    )
+                }
+            ) { innerPadding ->
+
+                when (selectedTab) {
+                    MainTab.HOME -> {
+                        AlarmageddonHome(
+                            alarms = alarms,
+                            onAddAlarm = {
+                                showCreateScreen = true
+                            },
+                            onAlarmClick = {
+                                selectedAlarm = it
+                            },
+                            onCrewClick = {
+                                selectedTab = MainTab.CREW
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
                     }
-                )
+
+                    MainTab.CREW -> {
+                        CrewDetailScreen(
+                            onBack = {
+                                selectedTab = MainTab.HOME
+                            }
+                        )
+                    }
+
+                    MainTab.ALARMS -> {
+                        AlarmListScreen(
+                            alarms = alarms,
+                            onAddAlarm = {
+                                showCreateScreen = true
+                            },
+                            onAlarmClick = {
+                                selectedAlarm = it
+                            },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
+
+                    MainTab.PROFILE -> {
+                        ProfileScreen(
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+// Bottom navigation
+@Composable
+fun AlarmBottomNavigation(
+    selectedTab: MainTab,
+    onTabSelected: (MainTab) -> Unit
+) {
+    NavigationBar(
+        containerColor = Color.White,
+        contentColor = Purple,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            selected = selectedTab == MainTab.HOME,
+            onClick = { onTabSelected(MainTab.HOME) },
+            icon = { Text("⌂", fontSize = 23.sp) },
+            label = { Text("Home", fontSize = 11.sp) },
+            colors = navigationItemColors()
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == MainTab.CREW,
+            onClick = { onTabSelected(MainTab.CREW) },
+            icon = { Text("♧", fontSize = 23.sp) },
+            label = { Text("Crew", fontSize = 11.sp) },
+            colors = navigationItemColors()
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == MainTab.ALARMS,
+            onClick = { onTabSelected(MainTab.ALARMS) },
+            icon = { Text("◷", fontSize = 23.sp) },
+            label = { Text("Alarms", fontSize = 11.sp) },
+            colors = navigationItemColors()
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == MainTab.PROFILE,
+            onClick = { onTabSelected(MainTab.PROFILE) },
+            icon = { Text("○", fontSize = 23.sp) },
+            label = { Text("Profile", fontSize = 11.sp) },
+            colors = navigationItemColors()
+        )
+    }
+}
+
+@Composable
+private fun navigationItemColors() =
+    NavigationBarItemDefaults.colors(
+        selectedIconColor = Color(0xFF8065E8),
+        selectedTextColor = Color(0xFF8065E8),
+        indicatorColor = Lavender,
+        unselectedIconColor = Muted,
+        unselectedTextColor = Muted
+    )
+
+// Main home screen
 @Composable
 fun AlarmageddonHome(
     alarms: List<Alarm>,
     onAddAlarm: () -> Unit,
     onAlarmClick: (Alarm) -> Unit,
-    onSignOut: () -> Unit
+    onCrewClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var displayName by remember { mutableStateOf("") }
 
@@ -113,7 +240,7 @@ fun AlarmageddonHome(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
@@ -146,7 +273,6 @@ fun AlarmageddonHome(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Next Wake-Up card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -154,9 +280,7 @@ fun AlarmageddonHome(
                 containerColor = Purple
             )
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
+            Column(modifier = Modifier.padding(24.dp)) {
                 Text(
                     text = "NEXT WAKE-UP",
                     fontSize = 12.sp,
@@ -167,7 +291,8 @@ fun AlarmageddonHome(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (alarms.isNotEmpty()) alarms.last().time else "07:00 AM",
+                    text = if (alarms.isNotEmpty()) alarms.last().time
+                    else "07:00 AM",
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -190,7 +315,6 @@ fun AlarmageddonHome(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Stats
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -220,7 +344,9 @@ fun AlarmageddonHome(
         Spacer(modifier = Modifier.height(14.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCrewClick),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Lavender
@@ -232,25 +358,25 @@ fun AlarmageddonHome(
                     .padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "🔥",
-                    fontSize = 28.sp
-                )
+                Text("🔥", fontSize = 28.sp)
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Morning Warriors",
                         fontWeight = FontWeight.Bold,
                         color = Purple
                     )
+
                     Text(
                         text = "Your crew is waiting for you",
                         fontSize = 13.sp,
                         color = Color.Gray
                     )
                 }
+
+                Text("›", fontSize = 26.sp, color = Purple)
             }
         }
 
@@ -271,7 +397,7 @@ fun AlarmageddonHome(
             Text(
                 text = "${alarms.size} alarms",
                 fontSize = 13.sp,
-                color = Color.Gray
+                color = Muted
             )
         }
 
@@ -291,10 +417,16 @@ fun AlarmageddonHome(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No alarms yet!", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        "Create your first alarm pact.",
+                        text = "No alarms yet!",
+                        fontWeight = FontWeight.Bold,
+                        color = Purple
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Create your first alarm pact.",
                         color = Color.Gray,
                         fontSize = 13.sp
                     )
@@ -311,9 +443,7 @@ fun AlarmageddonHome(
                         alarm.repeatDays.joinToString(" · ")
                     },
                     stake = alarm.stake,
-                    onClick = {
-                        onAlarmClick(alarm)
-                    }
+                    onClick = { onAlarmClick(alarm) }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -343,6 +473,175 @@ fun AlarmageddonHome(
     }
 }
 
+// Alarm list tab
+@Composable
+fun AlarmListScreen(
+    alarms: List<Alarm>,
+    onAddAlarm: () -> Unit,
+    onAlarmClick: (Alarm) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "YOUR ALARMS",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Muted
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Stay on track.",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Purple
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (alarms.isEmpty()) {
+            Text(
+                text = "No alarms created yet.",
+                color = Muted,
+                fontSize = 15.sp
+            )
+        } else {
+            alarms.forEach { alarm ->
+                AlarmCard(
+                    time = alarm.time,
+                    title = "Your Alarm",
+                    days = if (alarm.repeatDays.isEmpty()) {
+                        "No repeat"
+                    } else {
+                        alarm.repeatDays.joinToString(" · ")
+                    },
+                    stake = alarm.stake,
+                    onClick = { onAlarmClick(alarm) }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = onAddAlarm,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Purple
+            )
+        ) {
+            Text("+  Add New Alarm")
+        }
+    }
+}
+
+// Profile tab
+@Composable
+fun ProfileScreen(
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "YOUR PROFILE",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Muted
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Surface(
+            modifier = Modifier.size(76.dp),
+            shape = RoundedCornerShape(38.dp),
+            color = Lavender
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "K",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Purple
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Kylie",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Purple
+        )
+
+        Text(
+            text = "Keep showing up for yourself.",
+            fontSize = 14.sp,
+            color = Muted
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        ProfileInfoCard("Current streak", "5 days")
+        Spacer(modifier = Modifier.height(12.dp))
+        ProfileInfoCard("Crew membership", "Morning Warriors")
+        Spacer(modifier = Modifier.height(12.dp))
+        ProfileInfoCard("Account", "Coming soon")
+    }
+}
+
+@Composable
+fun ProfileInfoCard(
+    title: String,
+    value: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = Muted
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Purple
+            )
+        }
+    }
+}
+
+// Shared stat card
 @Composable
 fun StatCard(
     title: String,
@@ -356,9 +655,7 @@ fun StatCard(
             containerColor = Lavender
         )
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp)
-        ) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Text(
                 text = title,
                 fontSize = 10.sp,
@@ -378,6 +675,7 @@ fun StatCard(
     }
 }
 
+// Shared alarm card
 @Composable
 fun AlarmCard(
     time: String,
@@ -395,9 +693,7 @@ fun AlarmCard(
             containerColor = Color.White
         )
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = time,
                 fontSize = 28.sp,
