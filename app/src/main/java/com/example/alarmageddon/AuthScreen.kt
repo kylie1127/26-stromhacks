@@ -73,7 +73,7 @@ fun AuthScreen(onSuccess: () -> Unit) {
                                 .set(
                                     mapOf(
                                         "displayName" to name.trim(),
-                                        "email" to email.trim(),
+                                        "email" to email.trim().lowercase(),
                                         "createdAt" to FieldValue.serverTimestamp()
                                     )
                                 )

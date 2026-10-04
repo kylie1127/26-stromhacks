@@ -884,11 +884,12 @@ fun ProfileScreen(
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+        ProfileInfoCard("Account", "Coming soon")
 
-        ProfileInfoCard(
-            title = "Account",
-            value = "Coming soon"
-        )
+        OutlinedButton(
+            onClick = onSignOut,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Sign out", color = Purple) }
     }
 }
 

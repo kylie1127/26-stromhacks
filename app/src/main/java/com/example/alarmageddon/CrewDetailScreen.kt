@@ -5,6 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.*
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,10 +29,52 @@ private val CrewMuted = Color(0xFF89869D)
 fun CrewDetailScreen(
     onBack: () -> Unit
 ) {
+    val requests by rememberIncomingRequests()
+    val friends by rememberFriends()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    var addEmail by remember { mutableStateOf("") }
+    var addStatus by remember { mutableStateOf("") }
+    var actionMessage by remember { mutableStateOf("") }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false; addStatus = "" },
+            title = { Text("Add a friend") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = addEmail,
+                        onValueChange = { addEmail = it },
+                        label = { Text("Friend's email") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
+                    if (addStatus.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(addStatus, fontSize = 13.sp, color = CrewMuted)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    addStatus = "Searching..."
+                    sendFriendRequest(addEmail) { addStatus = it }
+                }) { Text("Send request") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false; addStatus = "" }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(CrewBackground)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
     ) {
         Spacer(modifier = Modifier.height(20.dp))
@@ -143,6 +191,73 @@ fun CrewDetailScreen(
             }
         }
 
+        if (requests.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(30.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Friend Requests",
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CrewPurple
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "${requests.size} new",
+                    fontSize = 13.sp,
+                    color = CrewMuted
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            requests.forEach { req ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = req.fromName.ifBlank { "Someone" },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CrewPurple
+                            )
+                            Text(
+                                text = req.fromEmail,
+                                fontSize = 12.sp,
+                                color = CrewMuted
+                            )
+                        }
+                        Button(
+                            onClick = { acceptFriendRequest(req) { actionMessage = it } },
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CrewPurple)
+                        ) { Text("Accept", fontSize = 12.sp) }
+                        TextButton(
+                            onClick = { declineFriendRequest(req) },
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) { Text("Decline", fontSize = 12.sp, color = CrewMuted) }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            if (actionMessage.isNotEmpty()) {
+                Text(actionMessage, fontSize = 12.sp, color = CrewMuted)
+            }
+        }
+
         Spacer(modifier = Modifier.height(30.dp))
 
         Row(
@@ -159,7 +274,7 @@ fun CrewDetailScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Text(
-                text = "3 members",
+                text = "${friends.size} members",
                 fontSize = 13.sp,
                 color = CrewMuted
             )
@@ -167,37 +282,31 @@ fun CrewDetailScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        CrewMemberCard(
-            initials = "K",
-            name = "Kylie",
-            streak = "5 day streak",
-            progress = 1.0f,
-            isYou = true
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        CrewMemberCard(
-            initials = "A",
-            name = "Alex",
-            streak = "4 day streak",
-            progress = 0.8f
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        CrewMemberCard(
-            initials = "J",
-            name = "Jordan",
-            streak = "3 day streak",
-            progress = 0.6f
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
+        if (friends.isEmpty()) {
+            Text(
+                text = "No friends yet. Add someone by email below.",
+                fontSize = 13.sp,
+                color = CrewMuted
+            )
+        } else {
+            friends.forEach { friend ->
+                CrewMemberCard(
+                    initials = friend.displayName.firstOrNull()?.uppercase() ?: "?",
+                    name = friend.displayName,
+                    streak = friend.email
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
 
         // Invite button
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .clickable {
+                    addEmail = ""
+                    addStatus = ""
+                    showAddDialog = true
+                },
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(
                 containerColor = CrewLavender
@@ -262,8 +371,8 @@ fun CrewDetailScreen(
 fun CrewMemberCard(
     initials: String,
     name: String,
-    streak: String,
-    progress: Float,
+    streak: String? = null,
+    progress: Float? = null,
     isYou: Boolean = false
 ) {
     Card(
@@ -332,33 +441,37 @@ fun CrewMemberCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(5.dp))
+                if (streak != null) {
+                    Spacer(modifier = Modifier.height(5.dp))
 
-                Text(
-                    text = streak,
-                    fontSize = 12.sp,
-                    color = CrewMuted
-                )
+                    Text(
+                        text = streak,
+                        fontSize = 12.sp,
+                        color = CrewMuted
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(9.dp))
+                if (progress != null) {
+                    Spacer(modifier = Modifier.height(9.dp))
 
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-                    color = Color(0xFF8065E8),
-                    trackColor = CrewLavender
-                )
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        color = Color(0xFF8065E8),
+                        trackColor = CrewLavender
+                    )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        color = CrewMuted
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Text(
-                text = "${(progress * 100).toInt()}%",
-                fontSize = 12.sp,
-                color = CrewMuted
-            )
         }
     }
 }
