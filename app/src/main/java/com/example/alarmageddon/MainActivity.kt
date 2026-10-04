@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.sp
 
 private val Purple = Color(0xFF343052)
 private val Lavender = Color(0xFFF0EEFF)
-private val Background = Color(0xFFF9F8FF)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +39,7 @@ fun AlarmageddonApp() {
 
     var showCreateScreen by remember { mutableStateOf(false) }
     var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+    var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
 
     when {
         selectedAlarm != null -> {
@@ -47,6 +47,34 @@ fun AlarmageddonApp() {
                 alarm = selectedAlarm!!,
                 onBack = {
                     selectedAlarm = null
+                },
+                onEdit = { alarm ->
+                    editingAlarm = alarm
+                    selectedAlarm = null
+                },
+                onDelete = { alarm ->
+                    alarms.removeAll { it.id == alarm.id }
+                    selectedAlarm = null
+                }
+            )
+        }
+
+        editingAlarm != null -> {
+            CreateAlarmScreen(
+                initialAlarm = editingAlarm,
+                onBack = {
+                    editingAlarm = null
+                },
+                onCreate = { updatedAlarm ->
+                    val index = alarms.indexOfFirst {
+                        it.id == updatedAlarm.id
+                    }
+
+                    if (index != -1) {
+                        alarms[index] = updatedAlarm
+                    }
+
+                    editingAlarm = null
                 }
             )
         }
@@ -117,7 +145,6 @@ fun AlarmageddonHome(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Next Wake-Up card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -138,7 +165,11 @@ fun AlarmageddonHome(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (alarms.isNotEmpty()) alarms.last().time else "07:00 AM",
+                    text = if (alarms.isNotEmpty()) {
+                        alarms.last().time
+                    } else {
+                        "07:00 AM"
+                    },
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -156,7 +187,6 @@ fun AlarmageddonHome(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Stats
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -198,10 +228,7 @@ fun AlarmageddonHome(
                     .padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "🔥",
-                    fontSize = 28.sp
-                )
+                Text("🔥", fontSize = 28.sp)
 
                 Spacer(modifier = Modifier.width(14.dp))
 
@@ -211,6 +238,7 @@ fun AlarmageddonHome(
                         fontWeight = FontWeight.Bold,
                         color = Purple
                     )
+
                     Text(
                         text = "Your crew is waiting for you",
                         fontSize = 13.sp,
@@ -257,8 +285,13 @@ fun AlarmageddonHome(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No alarms yet!", fontWeight = FontWeight.Bold)
+                    Text(
+                        "No alarms yet!",
+                        fontWeight = FontWeight.Bold
+                    )
+
                     Spacer(modifier = Modifier.height(6.dp))
+
                     Text(
                         "Create your first alarm pact.",
                         color = Color.Gray,
