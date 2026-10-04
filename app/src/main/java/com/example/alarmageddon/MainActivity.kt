@@ -46,6 +46,7 @@ fun AlarmageddonApp() {
     var selectedTab by remember { mutableStateOf(MainTab.HOME) }
     var showCreateScreen by remember { mutableStateOf(false) }
     var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+    var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
 
     when {
         selectedAlarm != null -> {
@@ -53,6 +54,34 @@ fun AlarmageddonApp() {
                 alarm = selectedAlarm!!,
                 onBack = {
                     selectedAlarm = null
+                },
+                onEdit = { alarm ->
+                    editingAlarm = alarm
+                    selectedAlarm = null
+                },
+                onDelete = { alarm ->
+                    alarms.removeAll { it.id == alarm.id }
+                    selectedAlarm = null
+                }
+            )
+        }
+
+        editingAlarm != null -> {
+            CreateAlarmScreen(
+                initialAlarm = editingAlarm,
+                onBack = {
+                    editingAlarm = null
+                },
+                onCreate = { updatedAlarm ->
+                    val index = alarms.indexOfFirst {
+                        it.id == updatedAlarm.id
+                    }
+
+                    if (index != -1) {
+                        alarms[index] = updatedAlarm
+                    }
+
+                    editingAlarm = null
                 }
             )
         }

@@ -42,38 +42,37 @@ private val CreateBackground = Color(0xFFF9F8FF)
 @Composable
 fun CreateAlarmScreen(
     onBack: () -> Unit,
-    onCreate: (Alarm) -> Unit
-) {
+    onCreate: (Alarm) -> Unit,
+    initialAlarm: Alarm? = null
+){
     val context = LocalContext.current
 
-    var selectedTime by remember {
-        mutableStateOf("7:00 AM")
+    var selectedTime by remember(initialAlarm?.id) {
+        mutableStateOf(initialAlarm?.time ?: "7:00 AM")
     }
 
     val weekdays = listOf(
         "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
     )
 
-    var selectedDays by remember {
-        mutableStateOf(setOf("Mon", "Tue", "Wed", "Thu", "Fri"))
+    var selectedDays by remember(initialAlarm?.id) {
+        mutableStateOf(
+            initialAlarm?.repeatDays?.toSet()
+                ?: setOf("Mon", "Tue", "Wed", "Thu", "Fri")
+        )
     }
 
-    // Demo friends - replace with Firebase data later
-    val availableFriends = listOf(
-        "Alex Morgan",
-        "Jordan Lee",
-        "Sam Chen"
-    )
-
-    val selectedFriends = remember {
-        mutableStateListOf<String>()
+    val selectedFriends = remember(initialAlarm?.id) {
+        mutableStateListOf<String>().apply {
+            addAll(initialAlarm?.crewMembers.orEmpty())
+        }
     }
 
-    var searchQuery by remember {
+    var searchQuery by remember(initialAlarm?.id) {
         mutableStateOf("")
     }
 
-    var showSearch by remember {
+    var showSearch by remember(initialAlarm?.id) {
         mutableStateOf(false)
     }
 
@@ -86,13 +85,35 @@ fun CreateAlarmScreen(
         "Custom"
     )
 
-    var selectedStake by remember {
-        mutableStateOf(stakes[0])
+    val isPresetStake = initialAlarm?.stake in stakes.filter {
+        it != "Custom ✏️"
     }
 
-    var customStake by remember {
-        mutableStateOf("")
+    var selectedStake by remember(initialAlarm?.id) {
+        mutableStateOf(
+            when {
+                initialAlarm == null -> stakes[0]
+                isPresetStake -> initialAlarm.stake
+                else -> "Custom ✏️"
+            }
+        )
     }
+
+    var customStake by remember(initialAlarm?.id) {
+        mutableStateOf(
+            if (initialAlarm != null && !isPresetStake) {
+                initialAlarm.stake
+            } else {
+                ""
+            }
+        )
+    }
+
+    val availableFriends = listOf(
+        "Alex Morgan",
+        "Jordan Lee",
+        "Sam Chen"
+    )
 
     val filteredFriends = availableFriends.filter {
         it.contains(searchQuery, ignoreCase = true) &&
@@ -124,7 +145,11 @@ fun CreateAlarmScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Create your Pact ⚡",
+            text = if (initialAlarm != null) {
+                "Edit your Pact ✏️"
+            } else {
+                "Create your Pact ⚡"
+            },
             fontSize = 27.sp,
             fontWeight = FontWeight.Bold,
             color = CreatePurple
@@ -464,13 +489,14 @@ fun CreateAlarmScreen(
         Button(
             onClick = {
                 val newAlarm = Alarm(
-                        time = selectedTime,
-                repeatDays = weekdays.filter {
-                    it in selectedDays
-                },
-                crewCount = selectedFriends.size + 1,
-                stake = finalStake,
-                crewMembers = selectedFriends.toList()
+                    id = initialAlarm?.id ?: java.util.UUID.randomUUID().toString(),
+                    time = selectedTime,
+                    repeatDays = weekdays.filter {
+                        it in selectedDays
+                    },
+                    crewCount = selectedFriends.size + 1,
+                    stake = finalStake,
+                    crewMembers = selectedFriends.toList()
                 )
 
                 onCreate(newAlarm)
@@ -486,7 +512,11 @@ fun CreateAlarmScreen(
             )
         ) {
             Text(
-                text = "Create Pact ⚡",
+                text = if (initialAlarm != null) {
+                    "Save Changes ✓"
+                } else {
+                    "Create Pact ⚡"
+                },
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
