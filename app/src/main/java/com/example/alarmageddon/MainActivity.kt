@@ -20,6 +20,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.Path
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 private val Purple = Color(0xFF343052)
 private val Lavender = Color(0xFFF0EEFF)
@@ -55,6 +57,10 @@ fun AlarmageddonApp() {
         )
         return
     }
+    val context = LocalContext.current
+    val alarmScheduler = remember {
+        AlarmScheduler(context)
+    }
 
     val alarms = remember { mutableStateListOf<Alarm>() }
 
@@ -75,6 +81,7 @@ fun AlarmageddonApp() {
                     selectedAlarm = null
                 },
                 onDelete = { alarm ->
+                    alarmScheduler.cancel(alarm)
                     alarms.removeAll { it.id == alarm.id }
                     selectedAlarm = null
                 }
@@ -88,6 +95,17 @@ fun AlarmageddonApp() {
                     editingAlarm = null
                 },
                 onCreate = { updatedAlarm ->
+                    editingAlarm?.let { alarmScheduler.cancel(it) }
+
+                    val scheduled = alarmScheduler.schedule(updatedAlarm)
+
+                    if (!scheduled) {
+                        Toast.makeText(
+                            context,
+                            "Please allow exact alarm permissions first.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                     val index = alarms.indexOfFirst {
                         it.id == updatedAlarm.id
                     }
@@ -108,6 +126,15 @@ fun AlarmageddonApp() {
                 },
                 onCreate = { alarm ->
                     alarms.add(alarm)
+                    val scheduled = alarmScheduler.schedule(alarm)
+
+                    if (!scheduled) {
+                        Toast.makeText(
+                            context,
+                            "Please allow exact alarm permissions first.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                     showCreateScreen = false
                     selectedTab = MainTab.ALARMS
                 }
