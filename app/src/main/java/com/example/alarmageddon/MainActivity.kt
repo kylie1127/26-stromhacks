@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 private val Purple = Color(0xFF343052)
 private val Lavender = Color(0xFFF0EEFF)
@@ -41,7 +43,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AlarmageddonApp() {
-    val alarms = remember { mutableStateListOf<Alarm>() }
+    var signedIn by remember {
+        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+    }
 
     var selectedTab by remember { mutableStateOf(MainTab.HOME) }
     var showCreateScreen by remember { mutableStateOf(false) }
@@ -223,6 +227,18 @@ fun AlarmageddonHome(
     onCrewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var displayName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        FirebaseFirestore.getInstance()
+            .collection("users").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                displayName = doc.getString("displayName") ?: ""
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -241,7 +257,7 @@ fun AlarmageddonHome(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Good morning, Kylie!",
+            text = if (displayName.isNotBlank()) "Good morning, $displayName!" else "Good morning!",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Purple
@@ -291,6 +307,11 @@ fun AlarmageddonHome(
                 )
             }
         }
+
+        TextButton(
+            onClick = onSignOut,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Sign out", color = Purple) }
 
         Spacer(modifier = Modifier.height(24.dp))
 
