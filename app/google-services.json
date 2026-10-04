@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878961885361",
+    "project_id": "stormhacks-26-dev",
+    "storage_bucket": "stormhacks-26-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878961885361:android:188eda767c18280764e290",
+        "android_client_info": {
+          "package_name": "com.example.alarmageddon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPjbXRhMdkOm6Nwxc4yG8LWMwd4tT9XIw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

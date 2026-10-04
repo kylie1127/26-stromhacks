@@ -18,9 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.Path
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 private val Purple = Color(0xFF343052)
 private val Lavender = Color(0xFFF0EEFF)
+private val Background = Color(0xFFFAF9FF)
+private val Muted = Color(0xFF89869D)
+
+enum class MainTab {
+    HOME, CREW, ALARMS, PROFILE
+}
 
 
 enum class MainTab {
@@ -71,28 +79,74 @@ fun AlarmageddonApp() {
                 onCreate = { updatedAlarm ->
                     val index = alarms.indexOfFirst {
                         it.id == updatedAlarm.id
+    var signedIn by remember {
+        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+    }
+
+    if (!signedIn) {
+        AuthScreen(onSuccess = { signedIn = true })
+        return
+    } else {
+
+        val alarms = remember { mutableStateListOf<Alarm>() }
+
+        var selectedTab by remember { mutableStateOf(MainTab.HOME) }
+        var showCreateScreen by remember { mutableStateOf(false) }
+        var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+        var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
+
+        when {
+            selectedAlarm != null -> {
+                AlarmDetailScreen(
+                    alarm = selectedAlarm!!,
+                    onBack = {
+                        selectedAlarm = null
+                    },
+                    onEdit = { alarm ->
+                        editingAlarm = alarm
+                        selectedAlarm = null
+                    },
+                    onDelete = { alarm ->
+                        alarms.removeAll { it.id == alarm.id }
+                        selectedAlarm = null
                     }
+                )
+            }
 
-                    if (index != -1) {
-                        alarms[index] = updatedAlarm
+            editingAlarm != null -> {
+                CreateAlarmScreen(
+                    initialAlarm = editingAlarm,
+                    onBack = {
+                        editingAlarm = null
+                    },
+                    onCreate = { updatedAlarm ->
+                        val index = alarms.indexOfFirst {
+                            it.id == updatedAlarm.id
+                        }
+
+                        if (index != -1) {
+                            alarms[index] = updatedAlarm
+                        }
+
+                        editingAlarm = null
                     }
+                )
+            }
 
-                    editingAlarm = null
-                }
-            )
-        }
+            showCreateScreen -> {
+                CreateAlarmScreen(
+                    onBack = {
+                        showCreateScreen = false
+                    },
+                    onCreate = { alarm ->
+                        alarms.add(alarm)
+                        showCreateScreen = false
+                        selectedTab = MainTab.ALARMS
+                    }
+                )
+            }
 
-        showCreateScreen -> {
-            CreateAlarmScreen(
-                onBack = { showCreateScreen = false },
-                onCreate = { alarm ->
-                    alarms.add(alarm)
-                    showCreateScreen = false
-                    selectedTab = MainTab.ALARMS
-                }
-            )
-        }
-
+      
         else -> {
             Scaffold(
                 containerColor = Color(0xFFFAF9FF),
@@ -144,7 +198,11 @@ fun AlarmageddonApp() {
 
                     MainTab.PROFILE -> {
                         ProfileScreen(
-                            modifier = Modifier.padding(innerPadding)
+                          onSignOut = {
+                                    FirebaseAuth.getInstance().signOut()
+                                    signedIn = false
+                                },
+                              modifier = Modifier.padding(innerPadding)
                         )
                     }
                 }
@@ -366,6 +424,18 @@ fun AlarmageddonHome(
     onAlarmClick: (Alarm) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var displayName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        FirebaseFirestore.getInstance()
+            .collection("users").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                displayName = doc.getString("displayName") ?: ""
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -385,7 +455,7 @@ fun AlarmageddonHome(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Good morning, Kylie!",
+            text = if (displayName.isNotBlank()) "Good morning, $displayName!" else "Good morning!",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Purple
@@ -422,11 +492,8 @@ fun AlarmageddonHome(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (alarms.isNotEmpty()) {
-                        alarms.last().time
-                    } else {
-                        "07:00 AM"
-                    },
+                    text = if (alarms.isNotEmpty()) alarms.last().time
+                    else "07:00 AM",
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -493,7 +560,7 @@ fun AlarmageddonHome(
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Morning Warriors",
                         fontWeight = FontWeight.Bold,
@@ -506,6 +573,8 @@ fun AlarmageddonHome(
                         color = Color.Gray
                     )
                 }
+
+                Text("›", fontSize = 26.sp, color = Purple)
             }
         }
 
@@ -527,7 +596,7 @@ fun AlarmageddonHome(
             Text(
                 text = "${alarms.size} alarms",
                 fontSize = 13.sp,
-                color = Color.Gray
+                color = Muted
             )
         }
 
@@ -551,14 +620,15 @@ fun AlarmageddonHome(
                 ) {
 
                     Text(
-                        "No alarms yet!",
-                        fontWeight = FontWeight.Bold
+                        text = "No alarms yet!",
+                        fontWeight = FontWeight.Bold,
+                        color = Purple
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        "Create your first alarm pact.",
+                        text = "Create your first alarm pact.",
                         color = Color.Gray,
                         fontSize = 13.sp
                     )
@@ -578,9 +648,7 @@ fun AlarmageddonHome(
                         alarm.repeatDays.joinToString(" · ")
                     },
                     stake = alarm.stake,
-                    onClick = {
-                        onAlarmClick(alarm)
-                    }
+                    onClick = { onAlarmClick(alarm) }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -766,12 +834,24 @@ fun AlarmListScreen(
     }
 }
 
-// Profile 화면
-
+// Profile tab
 @Composable
 fun ProfileScreen(
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var displayName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        FirebaseFirestore.getInstance()
+            .collection("users").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                displayName = doc.getString("displayName") ?: ""
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -812,7 +892,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Kylie",
+            text = if (displayName.isNotBlank()) displayName else "Your profile",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Purple
