@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Calendar
 import java.util.Locale
+import java.util.UUID
 
 private val CreatePurple = Color(0xFF343052)
 private val CreateLavender = Color(0xFFF0EEFF)
@@ -488,7 +489,7 @@ fun CreateAlarmScreen(
         Button(
             onClick = {
                 val newAlarm = Alarm(
-                    id = initialAlarm?.id ?: java.util.UUID.randomUUID().toString(),
+                    id = initialAlarm?.id ?: UUID.randomUUID().toString(),
                     time = selectedTime,
                     repeatDays = weekdays.filter {
                         it in selectedDays
