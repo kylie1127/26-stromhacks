@@ -26,10 +26,6 @@ private val Lavender = Color(0xFFF0EEFF)
 private val Background = Color(0xFFFAF9FF)
 private val Muted = Color(0xFF89869D)
 
-enum class MainTab {
-    HOME, CREW, ALARMS, PROFILE
-}
-
 
 enum class MainTab {
     HOME, CREW, ALARMS, PROFILE
@@ -49,6 +45,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AlarmageddonApp() {
+    var signedIn by remember {
+        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+    }
+
+    if (!signedIn) {
+        AuthScreen(
+            onSuccess = { signedIn = true }
+        )
+        return
+    }
+
     val alarms = remember { mutableStateListOf<Alarm>() }
 
     var selectedTab by remember { mutableStateOf(MainTab.HOME) }
@@ -60,7 +67,9 @@ fun AlarmageddonApp() {
         selectedAlarm != null -> {
             AlarmDetailScreen(
                 alarm = selectedAlarm!!,
-                onBack = { selectedAlarm = null },
+                onBack = {
+                    selectedAlarm = null
+                },
                 onEdit = { alarm ->
                     editingAlarm = alarm
                     selectedAlarm = null
@@ -75,78 +84,36 @@ fun AlarmageddonApp() {
         editingAlarm != null -> {
             CreateAlarmScreen(
                 initialAlarm = editingAlarm,
-                onBack = { editingAlarm = null },
+                onBack = {
+                    editingAlarm = null
+                },
                 onCreate = { updatedAlarm ->
                     val index = alarms.indexOfFirst {
                         it.id == updatedAlarm.id
-    var signedIn by remember {
-        mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
-    }
-
-    if (!signedIn) {
-        AuthScreen(onSuccess = { signedIn = true })
-        return
-    } else {
-
-        val alarms = remember { mutableStateListOf<Alarm>() }
-
-        var selectedTab by remember { mutableStateOf(MainTab.HOME) }
-        var showCreateScreen by remember { mutableStateOf(false) }
-        var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
-        var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
-
-        when {
-            selectedAlarm != null -> {
-                AlarmDetailScreen(
-                    alarm = selectedAlarm!!,
-                    onBack = {
-                        selectedAlarm = null
-                    },
-                    onEdit = { alarm ->
-                        editingAlarm = alarm
-                        selectedAlarm = null
-                    },
-                    onDelete = { alarm ->
-                        alarms.removeAll { it.id == alarm.id }
-                        selectedAlarm = null
                     }
-                )
-            }
 
-            editingAlarm != null -> {
-                CreateAlarmScreen(
-                    initialAlarm = editingAlarm,
-                    onBack = {
-                        editingAlarm = null
-                    },
-                    onCreate = { updatedAlarm ->
-                        val index = alarms.indexOfFirst {
-                            it.id == updatedAlarm.id
-                        }
-
-                        if (index != -1) {
-                            alarms[index] = updatedAlarm
-                        }
-
-                        editingAlarm = null
+                    if (index != -1) {
+                        alarms[index] = updatedAlarm
                     }
-                )
-            }
 
-            showCreateScreen -> {
-                CreateAlarmScreen(
-                    onBack = {
-                        showCreateScreen = false
-                    },
-                    onCreate = { alarm ->
-                        alarms.add(alarm)
-                        showCreateScreen = false
-                        selectedTab = MainTab.ALARMS
-                    }
-                )
-            }
+                    editingAlarm = null
+                }
+            )
+        }
 
-      
+        showCreateScreen -> {
+            CreateAlarmScreen(
+                onBack = {
+                    showCreateScreen = false
+                },
+                onCreate = { alarm ->
+                    alarms.add(alarm)
+                    showCreateScreen = false
+                    selectedTab = MainTab.ALARMS
+                }
+            )
+        }
+
         else -> {
             Scaffold(
                 containerColor = Color(0xFFFAF9FF),
@@ -161,7 +128,6 @@ fun AlarmageddonApp() {
             ) { innerPadding ->
 
                 when (selectedTab) {
-
                     MainTab.HOME -> {
                         AlarmageddonHome(
                             alarms = alarms,
@@ -198,11 +164,11 @@ fun AlarmageddonApp() {
 
                     MainTab.PROFILE -> {
                         ProfileScreen(
-                          onSignOut = {
-                                    FirebaseAuth.getInstance().signOut()
-                                    signedIn = false
-                                },
-                              modifier = Modifier.padding(innerPadding)
+                            onSignOut = {
+                                FirebaseAuth.getInstance().signOut()
+                                signedIn = false
+                            },
+                            modifier = Modifier.padding(innerPadding)
                         )
                     }
                 }
@@ -210,7 +176,6 @@ fun AlarmageddonApp() {
         }
     }
 }
-
 // 하단 네비게이션 바
 
 @Composable
