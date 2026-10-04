@@ -484,9 +484,12 @@ fun AlarmageddonHome(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (alarms.isNotEmpty()) alarms.last().time
-                    else "07:00 AM",
-                    fontSize = 40.sp,
+                    text = if (alarms.isNotEmpty()) {
+                        alarms.last().time
+                    } else {
+                        "No alarms yet"
+                    },
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
