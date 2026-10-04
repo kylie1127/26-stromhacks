@@ -1,3 +1,4 @@
+
 package com.example.alarmageddon
 
 import java.util.UUID
@@ -7,5 +8,6 @@ data class Alarm(
     val time: String,
     val repeatDays: List<String>,
     val crewCount: Int,
-    val stake: String
+    val stake: String,
+    val crewMembers: List<String> = emptyList()
 )

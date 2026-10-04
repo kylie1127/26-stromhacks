@@ -138,7 +138,7 @@ private fun DetailInfoCard(
             modifier = Modifier.padding(20.dp)
         ) {
             Text(
-                text = title,
+                text =title,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
