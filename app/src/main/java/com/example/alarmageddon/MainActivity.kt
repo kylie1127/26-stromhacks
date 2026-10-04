@@ -627,12 +627,12 @@ fun ProfileScreen(
         ProfileInfoCard("Crew membership", "Morning Warriors")
         Spacer(modifier = Modifier.height(12.dp))
         ProfileInfoCard("Account", "Coming soon")
-    }
 
-    OutlinedButton(
-        onClick = onSignOut,
-        modifier = Modifier.fillMaxWidth()
-    ) { Text("Sign out", color = Purple) }
+        OutlinedButton(
+            onClick = onSignOut,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Sign out", color = Purple) }
+    }
 }
 
 @Composable

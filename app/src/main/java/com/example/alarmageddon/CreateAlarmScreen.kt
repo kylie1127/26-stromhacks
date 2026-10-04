@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -109,15 +110,12 @@ fun CreateAlarmScreen(
         )
     }
 
-    val availableFriends = listOf(
-        "Alex Morgan",
-        "Jordan Lee",
-        "Sam Chen"
-    )
+    val friends by rememberFriends()
 
-    val filteredFriends = availableFriends.filter {
-        it.contains(searchQuery, ignoreCase = true) &&
-                it !in selectedFriends
+    val filteredFriends = friends.filter {
+        (it.displayName.contains(searchQuery, ignoreCase = true) ||
+                it.email.contains(searchQuery, ignoreCase = true)) &&
+                it.displayName !in selectedFriends
     }
 
     val finalStake = if (selectedStake.contains("Custom")) {
@@ -376,7 +374,8 @@ fun CreateAlarmScreen(
 
             if (filteredFriends.isEmpty()) {
                 Text(
-                    text = "No friends found.",
+                    text = if (friends.isEmpty()) "No friends yet. Add some in the Crew tab."
+                    else "No friends found.",
                     color = Color.Gray,
                     fontSize = 13.sp
                 )
@@ -384,7 +383,7 @@ fun CreateAlarmScreen(
                 filteredFriends.forEach { friend ->
                     OutlinedButton(
                         onClick = {
-                            selectedFriends.add(friend)
+                            selectedFriends.add(friend.displayName)
                             searchQuery = ""
                         },
                         modifier = Modifier
@@ -397,7 +396,7 @@ fun CreateAlarmScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "👤  $friend",
+                                text = "👤  ${friend.displayName}",
                                 color = CreatePurple
                             )
                             Text(
