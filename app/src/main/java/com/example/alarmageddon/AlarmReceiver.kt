@@ -4,28 +4,52 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
 
-        // 알람이 울리도록 서비스 실행
-        val serviceIntent = Intent(
-            context,
-            AlarmSoundService::class.java
-        )
+        Log.d("AlarmReceiver", "🔥 ALARM RECEIVER FIRED")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent)
-        } else {
-            context.startService(serviceIntent)
-        }
-
-        // 반복 요일이 있다면 다음 알람도 예약
-        val alarmId = intent.getStringExtra("alarmId") ?: return
-        val alarmTime = intent.getStringExtra("alarmTime") ?: return
+        val alarmId = intent.getStringExtra("alarmId")
+        val alarmTime = intent.getStringExtra("alarmTime")
         val repeatDays = intent.getStringArrayListExtra("repeatDays")
             ?: arrayListOf()
+
+        Log.d(
+            "AlarmReceiver",
+            "alarmId=$alarmId alarmTime=$alarmTime repeatDays=$repeatDays"
+        )
+
+        try {
+            val serviceIntent = Intent(
+                context,
+                AlarmSoundService::class.java
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Log.d("AlarmReceiver", "Starting foreground service")
+                context.startForegroundService(serviceIntent)
+            } else {
+                Log.d("AlarmReceiver", "Starting normal service")
+                context.startService(serviceIntent)
+            }
+
+            Log.d("AlarmReceiver", "Service start requested")
+
+        } catch (e: Exception) {
+            Log.e(
+                "AlarmReceiver",
+                "❌ FAILED TO START ALARM SERVICE",
+                e
+            )
+        }
+
+        if (alarmId == null || alarmTime == null) {
+            Log.e("AlarmReceiver", "❌ Missing alarm data")
+            return
+        }
 
         if (repeatDays.isNotEmpty()) {
             val alarm = Alarm(
@@ -35,6 +59,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 crewCount = 1,
                 stake = ""
             )
+
+            Log.d("AlarmReceiver", "Scheduling next repeating alarm")
 
             AlarmScheduler(context).schedule(alarm)
         }

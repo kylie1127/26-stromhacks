@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.os.Build
 import java.util.Calendar
 
@@ -16,40 +17,39 @@ class AlarmScheduler(context: Context) {
 
     fun schedule(alarm: Alarm): Boolean {
 
-        // Android 12 이상에서는 정확한 알람 권한 확인
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            !alarmManager.canScheduleExactAlarms()
-        ) {
+        val triggerTime = getNextAlarmTime(alarm)
+        if (triggerTime == null) {
+            Log.e("AlarmScheduler", "❌ Could not compute trigger time for ${alarm.time}")
             return false
         }
-
-        val triggerTime = getNextAlarmTime(alarm) ?: return false
 
         val intent = Intent(appContext, AlarmReceiver::class.java).apply {
             putExtra("alarmId", alarm.id)
             putExtra("alarmTime", alarm.time)
-            putStringArrayListExtra(
-                "repeatDays",
-                ArrayList(alarm.repeatDays)
-            )
+            putStringArrayListExtra("repeatDays", ArrayList(alarm.repeatDays))
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             appContext,
             alarm.id.hashCode(),
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val alarmClockInfo = AlarmManager.AlarmClockInfo(
-            triggerTime.timeInMillis,
+        // Opens the app when the user taps the alarm icon in the system UI
+        val showIntent = PendingIntent.getActivity(
+            appContext,
+            0,
+            Intent(appContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(triggerTime.timeInMillis, showIntent),
             pendingIntent
         )
 
-        alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-
+        Log.d("AlarmScheduler", "✅ Scheduled ${alarm.id} for ${triggerTime.time}")
         return true
     }
 
