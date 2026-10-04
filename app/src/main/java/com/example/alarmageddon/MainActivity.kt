@@ -47,115 +47,127 @@ fun AlarmageddonApp() {
         mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
     }
 
-    var selectedTab by remember { mutableStateOf(MainTab.HOME) }
-    var showCreateScreen by remember { mutableStateOf(false) }
-    var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
-    var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
+    if (!signedIn) {
+        AuthScreen(onSuccess = { signedIn = true })
+        return
+    } else {
 
-    when {
-        selectedAlarm != null -> {
-            AlarmDetailScreen(
-                alarm = selectedAlarm!!,
-                onBack = {
-                    selectedAlarm = null
-                },
-                onEdit = { alarm ->
-                    editingAlarm = alarm
-                    selectedAlarm = null
-                },
-                onDelete = { alarm ->
-                    alarms.removeAll { it.id == alarm.id }
-                    selectedAlarm = null
-                }
-            )
-        }
+        val alarms = remember { mutableStateListOf<Alarm>() }
 
-        editingAlarm != null -> {
-            CreateAlarmScreen(
-                initialAlarm = editingAlarm,
-                onBack = {
-                    editingAlarm = null
-                },
-                onCreate = { updatedAlarm ->
-                    val index = alarms.indexOfFirst {
-                        it.id == updatedAlarm.id
+        var selectedTab by remember { mutableStateOf(MainTab.HOME) }
+        var showCreateScreen by remember { mutableStateOf(false) }
+        var selectedAlarm by remember { mutableStateOf<Alarm?>(null) }
+        var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
+
+        when {
+            selectedAlarm != null -> {
+                AlarmDetailScreen(
+                    alarm = selectedAlarm!!,
+                    onBack = {
+                        selectedAlarm = null
+                    },
+                    onEdit = { alarm ->
+                        editingAlarm = alarm
+                        selectedAlarm = null
+                    },
+                    onDelete = { alarm ->
+                        alarms.removeAll { it.id == alarm.id }
+                        selectedAlarm = null
                     }
+                )
+            }
 
-                    if (index != -1) {
-                        alarms[index] = updatedAlarm
+            editingAlarm != null -> {
+                CreateAlarmScreen(
+                    initialAlarm = editingAlarm,
+                    onBack = {
+                        editingAlarm = null
+                    },
+                    onCreate = { updatedAlarm ->
+                        val index = alarms.indexOfFirst {
+                            it.id == updatedAlarm.id
+                        }
+
+                        if (index != -1) {
+                            alarms[index] = updatedAlarm
+                        }
+
+                        editingAlarm = null
                     }
+                )
+            }
 
-                    editingAlarm = null
-                }
-            )
-        }
+            showCreateScreen -> {
+                CreateAlarmScreen(
+                    onBack = {
+                        showCreateScreen = false
+                    },
+                    onCreate = { alarm ->
+                        alarms.add(alarm)
+                        showCreateScreen = false
+                        selectedTab = MainTab.ALARMS
+                    }
+                )
+            }
 
-        showCreateScreen -> {
-            CreateAlarmScreen(
-                onBack = {
-                    showCreateScreen = false
-                },
-                onCreate = { alarm ->
-                    alarms.add(alarm)
-                    showCreateScreen = false
-                    selectedTab = MainTab.ALARMS
-                }
-            )
-        }
-
-        else -> {
-            Scaffold(
-                containerColor = Background,
-                bottomBar = {
-                    AlarmBottomNavigation(
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it }
-                    )
-                }
-            ) { innerPadding ->
-
-                when (selectedTab) {
-                    MainTab.HOME -> {
-                        AlarmageddonHome(
-                            alarms = alarms,
-                            onAddAlarm = {
-                                showCreateScreen = true
-                            },
-                            onAlarmClick = {
-                                selectedAlarm = it
-                            },
-                            onCrewClick = {
-                                selectedTab = MainTab.CREW
-                            },
-                            modifier = Modifier.padding(innerPadding)
+            else -> {
+                Scaffold(
+                    containerColor = Background,
+                    bottomBar = {
+                        AlarmBottomNavigation(
+                            selectedTab = selectedTab,
+                            onTabSelected = { selectedTab = it }
                         )
                     }
+                ) { innerPadding ->
 
-                    MainTab.CREW -> {
-                        CrewDetailScreen(
-                            onBack = {
-                                selectedTab = MainTab.HOME
-                            }
-                        )
-                    }
+                    when (selectedTab) {
+                        MainTab.HOME -> {
+                            AlarmageddonHome(
+                                alarms = alarms,
+                                onAddAlarm = {
+                                    showCreateScreen = true
+                                },
+                                onAlarmClick = {
+                                    selectedAlarm = it
+                                },
+                                onCrewClick = {
+                                    selectedTab = MainTab.CREW
+                                },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
 
-                    MainTab.ALARMS -> {
-                        AlarmListScreen(
-                            alarms = alarms,
-                            onAddAlarm = {
-                                showCreateScreen = true
-                            },
-                            onAlarmClick = {
-                                selectedAlarm = it
-                            },
-                            modifier = Modifier.padding(innerPadding)
-                        )
-                    }
+                        MainTab.CREW -> {
+                            CrewDetailScreen(
+                                onBack = {
+                                    selectedTab = MainTab.HOME
+                                }
+                            )
+                        }
 
-                    MainTab.PROFILE -> {
-                        ProfileScreen(
-                            modifier = Modifier.padding(innerPadding)
-                        )
+                        MainTab.ALARMS -> {
+                            AlarmListScreen(
+                                alarms = alarms,
+                                onAddAlarm = {
+                                    showCreateScreen = true
+                                },
+                                onAlarmClick = {
+                                    selectedAlarm = it
+                                },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
+
+                        MainTab.PROFILE -> {
+                            ProfileScreen(
+                                onSignOut = {
+                                    FirebaseAuth.getInstance().signOut()
+                                    signedIn = false
+                                },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
                 }
             }
@@ -307,11 +319,6 @@ fun AlarmageddonHome(
                 )
             }
         }
-
-        TextButton(
-            onClick = onSignOut,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Sign out", color = Purple) }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -551,8 +558,21 @@ fun AlarmListScreen(
 // Profile tab
 @Composable
 fun ProfileScreen(
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var displayName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        FirebaseFirestore.getInstance()
+            .collection("users").document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                displayName = doc.getString("displayName") ?: ""
+            }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -577,7 +597,7 @@ fun ProfileScreen(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
-                    text = "K",
+                    text = displayName.firstOrNull()?.uppercase() ?: "?",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Purple
@@ -588,7 +608,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Kylie",
+            text = if (displayName.isNotBlank()) displayName else "Your profile",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Purple
@@ -608,6 +628,11 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(12.dp))
         ProfileInfoCard("Account", "Coming soon")
     }
+
+    OutlinedButton(
+        onClick = onSignOut,
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Sign out", color = Purple) }
 }
 
 @Composable
